@@ -1,0 +1,40 @@
+{
+  "name": "gh-download-pull-request",
+  "version": "0.1.0",
+  "description": "Download GitHub pull request and convert it to markdown",
+  "type": "module",
+  "main": "gh-download-pull-request.mjs",
+  "bin": {
+    "gh-download-pull-request": "./gh-download-pull-request.mjs"
+  },
+  "scripts": {
+    "test": "(cd tests && ./test-all.mjs)",
+    "version:patch": "./version.mjs patch",
+    "version:minor": "./version.mjs minor",
+    "version:major": "./version.mjs major"
+  },
+  "keywords": [
+    "github",
+    "pull-request",
+    "markdown",
+    "cli",
+    "tool",
+    "pr",
+    "download"
+  ],
+  "author": "Link.Foundation",
+  "license": "Unlicense",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/link-foundation/gh-download-pull-request.git"
+  },
+  "bugs": {
+    "url": "https://github.com/link-foundation/gh-download-pull-request/issues"
+  },
+  "homepage": "https://github.com/link-foundation/gh-download-pull-request#readme",
+  "files": [
+    "gh-download-pull-request.mjs",
+    "README.md",
+    "LICENSE"
+  ]
+}
