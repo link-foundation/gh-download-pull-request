@@ -128,6 +128,7 @@ gh-download-pull-request owner/repo#123 --token ghp_your_token_here
 ### Authentication Priority
 
 The tool uses this fallback chain:
+
 1. `--token` command line argument (highest priority)
 2. `GITHUB_TOKEN` environment variable
 3. GitHub CLI authentication (if `gh` is installed and authenticated)
