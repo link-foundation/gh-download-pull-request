@@ -2,8 +2,8 @@
 ':'; // # ; exec "$(command -v bun || command -v node)" "$0" "$@"
 
 // Import built-in Node.js modules
-import path from 'path';
-import { fileURLToPath } from 'url';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -47,7 +47,7 @@ const log = (color, message) =>
 // Helper function to check if gh CLI is installed
 async function isGhInstalled() {
   try {
-    const { execSync } = await import('child_process');
+    const { execSync } = await import('node:child_process');
     execSync('gh --version', { stdio: 'pipe' });
     return true;
   } catch (_error) {
@@ -62,7 +62,7 @@ async function getGhToken() {
       return null;
     }
 
-    const { execSync } = await import('child_process');
+    const { execSync } = await import('node:child_process');
     const token = execSync('gh auth token', {
       encoding: 'utf8',
       stdio: 'pipe',
