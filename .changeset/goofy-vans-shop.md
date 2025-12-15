@@ -2,4 +2,14 @@
 'gh-download-pull-request': minor
 ---
 
-Apply CI/CD template with GitHub Actions workflows, code quality tools (ESLint, Prettier, Husky), multi-runtime support (Node.js, Bun, Deno), and automated release management using changesets
+Apply CI/CD template with GitHub Actions workflows, code quality tools (ESLint, Prettier, Husky), multi-runtime support (Node.js, Bun, Deno), and automated release management using changesets.
+
+This release includes:
+
+- Complete CI/CD pipeline with GitHub Actions (testing, linting, automated releases)
+- Multi-runtime testing across Node.js, Bun, and Deno on Ubuntu, macOS, and Windows
+- Code quality tools: ESLint, Prettier, Husky pre-commit hooks, file size validation
+- Changesets-based version management with npm OIDC trusted publishing
+- Fix Windows compatibility by replacing use-m with static imports
+- Fix Bun test discovery by renaming test files to .test.mjs extension
+- Add @octokit/rest, fs-extra, and yargs as regular dependencies
