@@ -20,8 +20,10 @@ let version = '0.1.0'; // Fallback version
 
 try {
   const packagePath = path.join(__dirname, 'package.json');
-  if (await fs.pathExists(packagePath)) {
-    const packageJson = await fs.readJson(packagePath);
+  // Use node:fs for Deno compatibility (fs-extra has issues with Deno)
+  const { readFileSync, existsSync } = await import('node:fs');
+  if (existsSync(packagePath)) {
+    const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
     version = packageJson.version;
   }
 } catch (_error) {
