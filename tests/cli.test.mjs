@@ -14,10 +14,19 @@
 
 /* global TextDecoder */
 
-import { describe, it, assert, getRuntime } from 'test-anywhere';
+import {
+  describe,
+  it,
+  assert,
+  getRuntime,
+  setDefaultTimeout,
+} from 'test-anywhere';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+// Set timeout to 20 seconds for slow tests on Windows
+setDefaultTimeout(20000);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const scriptPath = path.join(
@@ -166,25 +175,21 @@ describe('gh-download-pull-request CLI', () => {
     }
   });
 
-  it(
-    'Invalid PR format should show helpful error',
-    async () => {
-      const cmd = getRuntimeCommand();
-      const baseArgs = getRuntimeArgs(scriptPath);
-      const args = [...baseArgs, 'invalid-pr-format'];
+  it('Invalid PR format should show helpful error', async () => {
+    const cmd = getRuntimeCommand();
+    const baseArgs = getRuntimeArgs(scriptPath);
+    const args = [...baseArgs, 'invalid-pr-format'];
 
-      try {
-        await execCommand(cmd, args);
-        // If it doesn't throw, that's unexpected
-        assert.ok(false, 'Should have failed with invalid format');
-      } catch (error) {
-        const output = (error.stdout || '') + (error.stderr || '');
-        assert.ok(
-          output.includes('Invalid PR URL') || output.includes('Invalid PR'),
-          `Did not show expected error message for invalid format. Output: ${output}`
-        );
-      }
-    },
-    { timeout: 20000 }
-  );
+    try {
+      await execCommand(cmd, args);
+      // If it doesn't throw, that's unexpected
+      assert.ok(false, 'Should have failed with invalid format');
+    } catch (error) {
+      const output = (error.stdout || '') + (error.stderr || '');
+      assert.ok(
+        output.includes('Invalid PR URL') || output.includes('Invalid PR'),
+        `Did not show expected error message for invalid format. Output: ${output}`
+      );
+    }
+  });
 });
