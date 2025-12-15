@@ -20,7 +20,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const scriptPath = path.join(__dirname, '..', 'gh-download-pull-request.mjs');
+const scriptPath = path.join(
+  __dirname,
+  '..',
+  'src',
+  'gh-download-pull-request.mjs'
+);
 
 /**
  * Cross-runtime command execution helper

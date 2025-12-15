@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "description": "Download GitHub pull request and convert it to markdown",
   "type": "module",
-  "main": "gh-download-pull-request.mjs",
+  "main": "src/gh-download-pull-request.mjs",
   "bin": {
-    "gh-download-pull-request": "./gh-download-pull-request.mjs"
+    "gh-download-pull-request": "./src/gh-download-pull-request.mjs"
   },
   "scripts": {
     "test": "node --test tests/",
@@ -20,9 +20,9 @@
     "changeset:version": "node scripts/changeset-version.mjs",
     "changeset:publish": "changeset publish",
     "changeset:status": "changeset status --since=origin/main",
-    "version:patch": "./version.mjs patch",
-    "version:minor": "./version.mjs minor",
-    "version:major": "./version.mjs major"
+    "version:patch": "./src/version.mjs patch",
+    "version:minor": "./src/version.mjs minor",
+    "version:major": "./src/version.mjs major"
   },
   "keywords": [
     "github",
@@ -47,7 +47,7 @@
     "node": ">=20.0.0"
   },
   "files": [
-    "gh-download-pull-request.mjs",
+    "src/",
     "README.md",
     "LICENSE"
   ],
