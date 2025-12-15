@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 console.log('🧪 Running all tests...\n');
 
-const tests = ['test-cli.mjs'];
+const tests = ['cli.test.mjs'];
 
 let totalPassed = 0;
 let totalFailed = 0;
