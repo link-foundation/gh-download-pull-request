@@ -1,7 +1,20 @@
 #!/usr/bin/env sh
-':'; // # ; exec "$(command -v bun || command -v node)" "$0" "$@"
+':'; // # ; exec "$(command -v bun || command -v deno run -A || command -v node)" "$0" "$@"
 
-import { execSync } from 'node:child_process';
+/**
+ * CLI tests for gh-download-pull-request
+ *
+ * Uses test-anywhere for multi-runtime support (Node.js, Bun, Deno)
+ *
+ * Run with:
+ *   node --test tests/cli.test.mjs
+ *   bun test tests/cli.test.mjs
+ *   deno test --allow-read --allow-run tests/cli.test.mjs
+ */
+
+/* global TextDecoder */
+
+import { describe, it, assert, getRuntime } from 'test-anywhere';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,89 +22,160 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const scriptPath = path.join(__dirname, '..', 'gh-download-pull-request.mjs');
 
-console.log('🧪 Running CLI tests...\n');
+/**
+ * Cross-runtime command execution helper
+ * Works in Node.js, Bun, and Deno
+ */
+async function execCommand(command, args) {
+  const runtime = getRuntime();
 
-let passed = 0;
-let failed = 0;
+  if (runtime === 'deno') {
+    // Use Deno.Command for Deno runtime
+    const cmd = new Deno.Command(command, {
+      args,
+      stdout: 'piped',
+      stderr: 'piped',
+    });
+    const output = await cmd.output();
+    const stdout = new TextDecoder().decode(output.stdout);
+    const stderr = new TextDecoder().decode(output.stderr);
 
-function test(name, fn) {
-  try {
-    fn();
-    console.log(`✅ ${name}`);
-    passed++;
-  } catch (error) {
-    console.log(`❌ ${name}`);
-    console.log(`   Error: ${error.message}`);
-    failed++;
+    if (!output.success) {
+      const error = new Error(`Command failed with exit code ${output.code}`);
+      error.stdout = stdout;
+      error.stderr = stderr;
+      error.status = output.code;
+      throw error;
+    }
+
+    return { stdout, stderr };
+  } else {
+    // Use child_process for Node.js and Bun
+    const { execSync } = await import('node:child_process');
+    try {
+      const stdout = execSync(
+        `${command} ${args.map((a) => `"${a}"`).join(' ')}`,
+        {
+          encoding: 'utf8',
+          stdio: 'pipe',
+        }
+      );
+      return { stdout, stderr: '' };
+    } catch (error) {
+      const err = new Error(error.message);
+      err.stdout = error.stdout || '';
+      err.stderr = error.stderr || '';
+      err.status = error.status;
+      throw err;
+    }
   }
 }
 
-// Test 1: Script is executable
-test('Script should have shebang and be readable', () => {
-  const content = readFileSync(scriptPath, 'utf8');
-  if (!content.startsWith('#!/usr/bin/env sh')) {
-    throw new Error('Missing or incorrect shebang');
+/**
+ * Get the runtime command for executing JavaScript files
+ */
+function getRuntimeCommand() {
+  const runtime = getRuntime();
+  switch (runtime) {
+    case 'deno':
+      return 'deno';
+    case 'bun':
+      return 'bun';
+    default:
+      return 'node';
   }
-});
-
-// Test 2: Help flag works
-test('--help flag should display help', () => {
-  try {
-    const output = execSync(`node "${scriptPath}" --help`, {
-      encoding: 'utf8',
-    });
-    if (!output.includes('Usage:')) {
-      throw new Error('Help output missing Usage section');
-    }
-  } catch (error) {
-    // yargs exits with code 1 when --help is used without required args
-    // Check both stdout and stderr for the help message
-    const output = error.stdout || error.stderr || '';
-    if (output.includes('Usage:')) {
-      return;
-    }
-    throw error;
-  }
-});
-
-// Test 3: Version flag works
-test('--version flag should display version', () => {
-  try {
-    const output = execSync(`node "${scriptPath}" --version`, {
-      encoding: 'utf8',
-    });
-    if (!output.match(/\d+\.\d+\.\d+/)) {
-      throw new Error('Version output missing version number');
-    }
-  } catch (error) {
-    if (error.stdout && error.stdout.match(/\d+\.\d+\.\d+/)) {
-      return;
-    }
-    throw error;
-  }
-});
-
-// Test 4: Invalid PR format shows error
-test('Invalid PR format should show helpful error', () => {
-  try {
-    execSync(`node "${scriptPath}" "invalid-pr-format"`, {
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-    throw new Error('Should have failed with invalid format');
-  } catch (error) {
-    if (error.stderr && error.stderr.includes('Invalid PR URL')) {
-      return;
-    }
-    if (error.stdout && error.stdout.includes('Invalid PR URL')) {
-      return;
-    }
-    throw new Error('Did not show expected error message for invalid format');
-  }
-});
-
-console.log(`\n📊 Test Results: ${passed} passed, ${failed} failed`);
-
-if (failed > 0) {
-  process.exit(1);
 }
+
+/**
+ * Get runtime-specific arguments for running a script
+ */
+function getRuntimeArgs(scriptPath) {
+  const runtime = getRuntime();
+  switch (runtime) {
+    case 'deno':
+      return [
+        'run',
+        '--allow-read',
+        '--allow-net',
+        '--allow-env',
+        '--allow-run',
+        '--no-check',
+        scriptPath,
+      ];
+    case 'bun':
+      return ['run', scriptPath];
+    default:
+      return [scriptPath];
+  }
+}
+
+describe('gh-download-pull-request CLI', () => {
+  it('Script should have shebang and be readable', () => {
+    const content = readFileSync(scriptPath, 'utf8');
+    assert.ok(
+      content.startsWith('#!/usr/bin/env sh'),
+      'Missing or incorrect shebang'
+    );
+  });
+
+  it('--help flag should display help', async () => {
+    const cmd = getRuntimeCommand();
+    const baseArgs = getRuntimeArgs(scriptPath);
+    const args = [...baseArgs, '--help'];
+
+    try {
+      const result = await execCommand(cmd, args);
+      // yargs --help should include "Usage:"
+      assert.ok(
+        result.stdout.includes('Usage:') || result.stderr.includes('Usage:'),
+        'Help output missing Usage section'
+      );
+    } catch (error) {
+      // yargs exits with code 0 for --help but may write to stdout or stderr
+      const output = (error.stdout || '') + (error.stderr || '');
+      assert.ok(
+        output.includes('Usage:'),
+        `Help output missing Usage section. Output: ${output}`
+      );
+    }
+  });
+
+  it('--version flag should display version', async () => {
+    const cmd = getRuntimeCommand();
+    const baseArgs = getRuntimeArgs(scriptPath);
+    const args = [...baseArgs, '--version'];
+
+    try {
+      const result = await execCommand(cmd, args);
+      const output = result.stdout + result.stderr;
+      assert.ok(
+        output.match(/\d+\.\d+\.\d+/),
+        'Version output missing version number'
+      );
+    } catch (error) {
+      const output = (error.stdout || '') + (error.stderr || '');
+      assert.ok(
+        output.match(/\d+\.\d+\.\d+/),
+        `Version output missing version number. Output: ${output}`
+      );
+    }
+  });
+
+  it('Invalid PR format should show helpful error', async () => {
+    const cmd = getRuntimeCommand();
+    const baseArgs = getRuntimeArgs(scriptPath);
+    const args = [...baseArgs, 'invalid-pr-format'];
+
+    try {
+      await execCommand(cmd, args);
+      // If it doesn't throw, that's unexpected
+      assert.ok(false, 'Should have failed with invalid format');
+    } catch (error) {
+      const output = (error.stdout || '') + (error.stderr || '');
+      assert.ok(
+        output.includes('Invalid PR URL') || output.includes('Invalid PR'),
+        `Did not show expected error message for invalid format. Output: ${output}`
+      );
+    }
+  });
+});
