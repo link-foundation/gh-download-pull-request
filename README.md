@@ -65,6 +65,9 @@ npm uninstall -g gh-download-pull-request
 git clone https://github.com/link-foundation/gh-download-pull-request.git
 cd gh-download-pull-request
 
+# Install dependencies
+npm install
+
 # Make the script executable
 chmod +x gh-download-pull-request.mjs
 
@@ -128,6 +131,7 @@ gh-download-pull-request owner/repo#123 --token ghp_your_token_here
 ### Authentication Priority
 
 The tool uses this fallback chain:
+
 1. `--token` command line argument (highest priority)
 2. `GITHUB_TOKEN` environment variable
 3. GitHub CLI authentication (if `gh` is installed and authenticated)
@@ -187,10 +191,11 @@ gh-download-pull-request owner/repo#123 | claude-analyze
 
 ```bash
 # Run all tests
-./tests/test-all.mjs
+npm test
 
-# Run specific test
-./tests/test-cli.mjs
+# Or run test files directly
+node tests/all.test.mjs
+node tests/cli.test.mjs
 ```
 
 ## Development
@@ -200,11 +205,20 @@ gh-download-pull-request owner/repo#123 | claude-analyze
 git clone https://github.com/link-foundation/gh-download-pull-request.git
 cd gh-download-pull-request
 
+# Install dependencies
+npm install
+
 # Make executable
 chmod +x gh-download-pull-request.mjs
 
 # Test locally
 ./gh-download-pull-request.mjs owner/repo#123
+
+# Run tests
+npm test
+
+# Run linting
+npm run lint
 
 # Bump version
 ./version.mjs patch  # or minor, major
