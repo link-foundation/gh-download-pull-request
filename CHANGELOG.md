@@ -1,5 +1,11 @@
 # gh-download-pull-request
 
+## 0.2.1
+
+### Patch Changes
+
+- 35d2646: Fix GitHub release formatting to remove incorrect section headers for major/minor/patch versions and properly link related pull requests
+
 ## 0.2.0
 
 ### Minor Changes
