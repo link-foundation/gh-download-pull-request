@@ -1,5 +1,11 @@
 # gh-load-pull-request
 
+## 0.4.2
+
+### Patch Changes
+
+- Test patch release
+
 ## 0.4.1
 
 ### Patch Changes
