@@ -821,6 +821,17 @@ async function main() {
   // Set verbose mode
   verboseMode = verbose;
 
+  // Parse PR input first (before potentially slow gh CLI token fetch)
+  const prInfo = parsePrUrl(prInput);
+  if (!prInfo) {
+    log('red', `❌ Invalid PR URL or format: ${prInput}`);
+    log('yellow', '💡 Supported formats:');
+    log('yellow', '   - https://github.com/owner/repo/pull/123');
+    log('yellow', '   - owner/repo#123');
+    log('yellow', '   - owner/repo/123');
+    process.exit(1);
+  }
+
   let token = tokenArg;
 
   // If no token provided, try to get it from gh CLI
@@ -830,17 +841,6 @@ async function main() {
       token = ghToken;
       log('cyan', '🔑 Using GitHub token from gh CLI');
     }
-  }
-
-  // Parse PR input
-  const prInfo = parsePrUrl(prInput);
-  if (!prInfo) {
-    log('red', `❌ Invalid PR URL or format: ${prInput}`);
-    log('yellow', '💡 Supported formats:');
-    log('yellow', '   - https://github.com/owner/repo/pull/123');
-    log('yellow', '   - owner/repo#123');
-    log('yellow', '   - owner/repo/123');
-    process.exit(1);
   }
 
   const { owner, repo, prNumber } = prInfo;
