@@ -2,7 +2,7 @@
 ':'; // # ; exec "$(command -v bun || command -v deno run -A || command -v node)" "$0" "$@"
 
 /**
- * CLI tests for gh-download-pull-request
+ * CLI tests for gh-load-pull-request
  *
  * Uses test-anywhere for multi-runtime support (Node.js, Bun, Deno)
  *
@@ -33,7 +33,7 @@ const scriptPath = path.join(
   __dirname,
   '..',
   'src',
-  'gh-download-pull-request.mjs'
+  'gh-load-pull-request.mjs'
 );
 
 /**
@@ -123,7 +123,7 @@ function getRuntimeArgs(scriptPath) {
   }
 }
 
-describe('gh-download-pull-request CLI', () => {
+describe('gh-load-pull-request CLI', () => {
   it('Script should have shebang and be readable', () => {
     const content = readFileSync(scriptPath, 'utf8');
     assert.ok(

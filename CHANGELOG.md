@@ -1,4 +1,4 @@
-# gh-download-pull-request
+# gh-load-pull-request
 
 ## 0.4.0
 

@@ -240,7 +240,7 @@ function downloadFile(url, token, maxRedirects = 5) {
     const protocol = parsedUrl.protocol === 'https:' ? https : http;
 
     const headers = {
-      'User-Agent': 'gh-download-pull-request',
+      'User-Agent': 'gh-load-pull-request',
     };
 
     // Add auth for GitHub URLs

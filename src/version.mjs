@@ -24,7 +24,7 @@ function updatePackageJson(newVersion) {
 }
 
 function updateMainScript(newVersion) {
-  const scriptPath = path.join(__dirname, 'gh-download-pull-request.mjs');
+  const scriptPath = path.join(__dirname, 'gh-load-pull-request.mjs');
   const content = fs.readFileSync(scriptPath, 'utf8');
   const updatedContent = content.replace(
     /let version = '[^']+'/,
@@ -82,7 +82,7 @@ function main() {
 
     console.log('✅ Version updated successfully!');
     console.log(`   📄 package.json: ${newVersion}`);
-    console.log(`   📄 gh-download-pull-request.mjs: ${newVersion}`);
+    console.log(`   📄 gh-load-pull-request.mjs: ${newVersion}`);
     console.log('');
 
     // Automatically commit and push changes

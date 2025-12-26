@@ -3,9 +3,9 @@
   "version": "0.4.0",
   "description": "Download GitHub pull request and convert it to markdown",
   "type": "module",
-  "main": "src/gh-download-pull-request.mjs",
+  "main": "src/gh-load-pull-request.mjs",
   "bin": {
-    "gh-download-pull-request": "./src/gh-download-pull-request.mjs"
+    "gh-load-pull-request": "./src/gh-load-pull-request.mjs"
   },
   "scripts": {
     "test": "node --test tests/",
@@ -37,12 +37,12 @@
   "license": "Unlicense",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/link-foundation/gh-download-pull-request.git"
+    "url": "git+https://github.com/link-foundation/gh-load-pull-request.git"
   },
   "bugs": {
-    "url": "https://github.com/link-foundation/gh-download-pull-request/issues"
+    "url": "https://github.com/link-foundation/gh-load-pull-request/issues"
   },
-  "homepage": "https://github.com/link-foundation/gh-download-pull-request#readme",
+  "homepage": "https://github.com/link-foundation/gh-load-pull-request#readme",
   "engines": {
     "node": ">=20.0.0"
   },
