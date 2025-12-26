@@ -1,6 +1,6 @@
 # [WIP] Make MVP
 
-**Pull Request:** [#2](https://github.com/link-foundation/gh-download-pull-request/pull/2)
+**Pull Request:** [#2](https://github.com/link-foundation/gh-load-pull-request/pull/2)
 **Author:** [@konard](https://github.com/konard)
 **Status:** open
 **Created:** 10/24/2025, 12:42:32 AM
@@ -38,7 +38,7 @@ _This PR was created automatically by the AI issue solver_
 
 ## Commits (1)
 
-- [`0914f20`](https://github.com/link-foundation/gh-download-pull-request/commit/0914f20e171017d624f02893cd048e6a2da71d40) Initial commit with task details for issue #1 - @konard
+- [`0914f20`](https://github.com/link-foundation/gh-load-pull-request/commit/0914f20e171017d624f02893cd048e6a2da71d40) Initial commit with task details for issue #1 - @konard
 
 ## Files Changed (1)
 

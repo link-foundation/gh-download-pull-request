@@ -1,6 +1,6 @@
-# gh-download-pull-request
+# gh-load-pull-request
 
-[![npm version](https://img.shields.io/npm/v/gh-download-pull-request)](https://www.npmjs.com/package/gh-download-pull-request)
+[![npm version](https://img.shields.io/npm/v/gh-load-pull-request)](https://www.npmjs.com/package/gh-load-pull-request)
 
 Download GitHub pull request and convert it to markdown - perfect for AI review and analysis.
 
@@ -17,16 +17,16 @@ Download GitHub pull request and convert it to markdown - perfect for AI review 
 
 ```bash
 # Download a PR and display as markdown
-gh-download-pull-request https://github.com/owner/repo/pull/123
+gh-load-pull-request https://github.com/owner/repo/pull/123
 
 # Using shorthand format
-gh-download-pull-request owner/repo#123
+gh-load-pull-request owner/repo#123
 
 # Save to file
-gh-download-pull-request owner/repo#123 -o pr.md
+gh-load-pull-request owner/repo#123 -o pr.md
 
 # Download private PR (uses gh CLI auth automatically)
-gh-download-pull-request owner/private-repo#456
+gh-load-pull-request owner/private-repo#456
 ```
 
 ## Installation
@@ -37,13 +37,13 @@ Install globally for system-wide access:
 
 ```bash
 # Using bun
-bun install -g gh-download-pull-request
+bun install -g gh-load-pull-request
 
 # Using npm
-npm install -g gh-download-pull-request
+npm install -g gh-load-pull-request
 
 # After installation, use anywhere:
-gh-download-pull-request --help
+gh-load-pull-request --help
 ```
 
 ### Uninstall
@@ -52,33 +52,33 @@ Remove the global installation:
 
 ```bash
 # Using bun
-bun uninstall -g gh-download-pull-request
+bun uninstall -g gh-load-pull-request
 
 # Using npm
-npm uninstall -g gh-download-pull-request
+npm uninstall -g gh-load-pull-request
 ```
 
 ### Local Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/link-foundation/gh-download-pull-request.git
-cd gh-download-pull-request
+git clone https://github.com/link-foundation/gh-load-pull-request.git
+cd gh-load-pull-request
 
 # Install dependencies
 npm install
 
 # Make the script executable
-chmod +x gh-download-pull-request.mjs
+chmod +x gh-load-pull-request.mjs
 
 # Run it
-./gh-download-pull-request.mjs --help
+./gh-load-pull-request.mjs --help
 ```
 
 ## Usage
 
 ```
-Usage: gh-download-pull-request <pr-url> [options]
+Usage: gh-load-pull-request <pr-url> [options]
 
 Options:
   -t, --token    GitHub personal access token (optional for public PRs)
@@ -108,7 +108,7 @@ If you have [GitHub CLI](https://cli.github.com/) installed and authenticated, t
 gh auth login
 
 # Tool automatically detects and uses gh CLI authentication
-gh-download-pull-request owner/private-repo#123
+gh-load-pull-request owner/private-repo#123
 ```
 
 ### 2. Environment Variable
@@ -117,7 +117,7 @@ Set the `GITHUB_TOKEN` environment variable:
 
 ```bash
 export GITHUB_TOKEN=ghp_your_token_here
-gh-download-pull-request owner/repo#123
+gh-load-pull-request owner/repo#123
 ```
 
 ### 3. Command Line Token
@@ -125,7 +125,7 @@ gh-download-pull-request owner/repo#123
 Pass the token directly with `--token`:
 
 ```bash
-gh-download-pull-request owner/repo#123 --token ghp_your_token_here
+gh-load-pull-request owner/repo#123 --token ghp_your_token_here
 ```
 
 ### Authentication Priority
@@ -154,22 +154,22 @@ The markdown output includes:
 
 ```bash
 # Basic usage - download and display PR
-gh-download-pull-request https://github.com/facebook/react/pull/28000
+gh-load-pull-request https://github.com/facebook/react/pull/28000
 
 # Using shorthand format
-gh-download-pull-request facebook/react#28000
+gh-load-pull-request facebook/react#28000
 
 # Save to file
-gh-download-pull-request facebook/react#28000 -o react-pr-28000.md
+gh-load-pull-request facebook/react#28000 -o react-pr-28000.md
 
 # Download private PR using gh CLI auth
-gh-download-pull-request myorg/private-repo#42
+gh-load-pull-request myorg/private-repo#42
 
 # Download with explicit token
-gh-download-pull-request myorg/repo#123 --token ghp_your_token_here
+gh-load-pull-request myorg/repo#123 --token ghp_your_token_here
 
 # Pipe to other tools (e.g., AI for review)
-gh-download-pull-request owner/repo#123 | claude-analyze
+gh-load-pull-request owner/repo#123 | claude-analyze
 ```
 
 ## Requirements
@@ -202,17 +202,17 @@ node tests/cli.test.mjs
 
 ```bash
 # Clone the repository
-git clone https://github.com/link-foundation/gh-download-pull-request.git
-cd gh-download-pull-request
+git clone https://github.com/link-foundation/gh-load-pull-request.git
+cd gh-load-pull-request
 
 # Install dependencies
 npm install
 
 # Make executable
-chmod +x gh-download-pull-request.mjs
+chmod +x gh-load-pull-request.mjs
 
 # Test locally
-./gh-download-pull-request.mjs owner/repo#123
+./gh-load-pull-request.mjs owner/repo#123
 
 # Run tests
 npm test
