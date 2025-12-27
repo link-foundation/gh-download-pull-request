@@ -1,37 +1,38 @@
 #!/usr/bin/env bun
 
-// Import built-in Node.js modules
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import https from 'node:https';
 import http from 'node:http';
 
-// Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Import npm dependencies
 import { Octokit } from '@octokit/rest';
 import fs from 'fs-extra';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-// Get version from package.json or fallback
-let version = '0.1.0'; // Fallback version
+import {
+  formatDate,
+  convertToJson as formattersConvertToJson,
+  generateMetadataMarkdown,
+  generateCommitsMarkdown,
+  generateFilesMarkdown,
+} from './formatters.mjs';
 
+let version = '0.1.0';
 try {
   const packagePath = path.join(__dirname, '..', 'package.json');
-  // Use node:fs for Deno compatibility (fs-extra has issues with Deno)
   const { readFileSync, existsSync } = await import('node:fs');
   if (existsSync(packagePath)) {
     const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
     version = packageJson.version;
   }
 } catch (_error) {
-  // Use fallback version if package.json can't be read
+  /* Use fallback version */
 }
 
-// Colors for console output
 const colors = {
   green: '\x1b[32m',
   yellow: '\x1b[33m',
@@ -44,7 +45,6 @@ const colors = {
   reset: '\x1b[0m',
 };
 
-// Logging configuration
 let verboseMode = false;
 let silentMode = false;
 
@@ -71,7 +71,6 @@ export function setLoggingMode(options = {}) {
   silentMode = options.silent || false;
 }
 
-// Helper function to check if gh CLI is installed
 async function isGhInstalled() {
   try {
     const { execSync } = await import('node:child_process');
@@ -109,12 +108,7 @@ export async function getGhToken() {
  * @returns {{owner: string, repo: string, prNumber: number}|null} Parsed PR info or null
  */
 export function parsePrUrl(url) {
-  // Support multiple formats:
-  // https://github.com/owner/repo/pull/123
-  // owner/repo#123
-  // owner/repo/123
-
-  // Try full URL format
+  // Try full URL format (github.com/owner/repo/pull/123 or owner/repo#123 or owner/repo/123)
   const urlMatch = url.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
   if (urlMatch) {
     return {
@@ -147,7 +141,6 @@ export function parsePrUrl(url) {
   return null;
 }
 
-// Image magic bytes for validation
 const imageMagicBytes = {
   png: [0x89, 0x50, 0x4e, 0x47],
   jpg: [0xff, 0xd8, 0xff],
@@ -521,22 +514,6 @@ function processContent(
 }
 
 /**
- * Format a date string for display
- * @param {string} dateStr - ISO date string
- * @returns {string} Formatted date string
- */
-function formatDate(dateStr) {
-  if (!dateStr) {
-    return '';
-  }
-  const date = new Date(dateStr);
-  return date
-    .toISOString()
-    .replace('T', ' ')
-    .replace(/\.\d+Z$/, ' UTC');
-}
-
-/**
  * Convert PR data to markdown format
  * @param {Object} data - PR data from loadPullRequest
  * @param {Object} options - Conversion options
@@ -573,82 +550,20 @@ export async function convertToMarkdown(data, options = {}) {
     allDownloadedImages = [...allDownloadedImages, ...result.downloadedImages];
   }
 
-  // ============================================
-  // HEADER - Title
-  // ============================================
   markdown += `# ${pr.title}\n\n`;
 
-  // ============================================
-  // METADATA BLOCK - Mirrors GitHub PR sidebar
-  // ============================================
-  markdown += `## Metadata\n\n`;
-
-  // Basic info
-  markdown += `| Field | Value |\n`;
-  markdown += `|-------|-------|\n`;
-  markdown += `| **Number** | #${pr.number} |\n`;
-  markdown += `| **URL** | ${pr.html_url} |\n`;
-  markdown += `| **Author** | [@${pr.user.login}](https://github.com/${pr.user.login}) |\n`;
-  markdown += `| **State** | ${pr.state}${pr.merged ? ' (merged)' : pr.draft ? ' (draft)' : ''} |\n`;
-  markdown += `| **Created** | ${formatDate(pr.created_at)} |\n`;
-  markdown += `| **Updated** | ${formatDate(pr.updated_at)} |\n`;
-  if (pr.merged_at) {
-    markdown += `| **Merged** | ${formatDate(pr.merged_at)} |\n`;
-    if (pr.merged_by) {
-      markdown += `| **Merged by** | [@${pr.merged_by.login}](https://github.com/${pr.merged_by.login}) |\n`;
-    }
-  }
-  if (pr.closed_at && !pr.merged_at) {
-    markdown += `| **Closed** | ${formatDate(pr.closed_at)} |\n`;
-  }
-  markdown += `| **Base** | \`${pr.base.ref}\` |\n`;
-  markdown += `| **Head** | \`${pr.head.ref}\` |\n`;
-  markdown += `| **Additions** | +${pr.additions} |\n`;
-  markdown += `| **Deletions** | -${pr.deletions} |\n`;
-  markdown += `| **Changed Files** | ${pr.changed_files} |\n`;
-
-  markdown += '\n';
-
-  // Labels
-  if (pr.labels && pr.labels.length > 0) {
-    markdown += `**Labels:** ${pr.labels.map((l) => `\`${l.name}\``).join(', ')}\n\n`;
-  }
-
-  // Assignees
-  if (pr.assignees && pr.assignees.length > 0) {
-    markdown += `**Assignees:** ${pr.assignees.map((a) => `[@${a.login}](https://github.com/${a.login})`).join(', ')}\n\n`;
-  }
-
-  // Reviewers (requested)
-  if (pr.requested_reviewers && pr.requested_reviewers.length > 0) {
-    markdown += `**Requested Reviewers:** ${pr.requested_reviewers.map((r) => `[@${r.login}](https://github.com/${r.login})`).join(', ')}\n\n`;
-  }
-
-  // Milestone
-  if (pr.milestone) {
-    markdown += `**Milestone:** ${pr.milestone.title}\n\n`;
-  }
-
+  markdown += generateMetadataMarkdown(pr);
   markdown += '---\n\n';
 
-  // ============================================
-  // DESCRIPTION
-  // ============================================
   markdown += '## Description\n\n';
   markdown += prBody ? `${prBody}\n\n` : '_No description provided._\n\n';
 
   markdown += '---\n\n';
 
-  // ============================================
-  // CONVERSATION TIMELINE
-  // Build a chronological timeline of all events
-  // ============================================
   markdown += '## Conversation\n\n';
 
-  // Collect all timeline events with timestamps
   const timelineEvents = [];
 
-  // Add comments to timeline
   for (const comment of comments) {
     timelineEvents.push({
       type: 'comment',
@@ -657,7 +572,6 @@ export async function convertToMarkdown(data, options = {}) {
     });
   }
 
-  // Add reviews to timeline
   for (const review of reviews) {
     if (review.submitted_at) {
       timelineEvents.push({
@@ -668,10 +582,8 @@ export async function convertToMarkdown(data, options = {}) {
     }
   }
 
-  // Sort by timestamp
   timelineEvents.sort((a, b) => a.timestamp - b.timestamp);
 
-  // Render timeline events
   if (timelineEvents.length === 0) {
     markdown += '_No comments or reviews._\n\n';
   } else {
@@ -779,9 +691,6 @@ export async function convertToMarkdown(data, options = {}) {
     }
   }
 
-  // ============================================
-  // STANDALONE REVIEW COMMENTS (not part of a review)
-  // ============================================
   const standaloneReviewComments = reviewComments.filter(
     (rc) => !rc.pull_request_review_id
   );
@@ -820,51 +729,9 @@ export async function convertToMarkdown(data, options = {}) {
     }
   }
 
-  // ============================================
-  // COMMITS
-  // ============================================
-  if (commits.length > 0) {
-    markdown += `## Commits (${commits.length})\n\n`;
-    for (const commit of commits) {
-      const message = commit.commit.message.split('\n')[0]; // First line only
-      const sha = commit.sha.substring(0, 7);
-      const author =
-        commit.author?.login || commit.commit.author?.name || 'unknown';
-      const authorLink = commit.author
-        ? `[@${author}](https://github.com/${author})`
-        : author;
-      markdown += `- [\`${sha}\`](${commit.html_url}) ${message} — ${authorLink}\n`;
-    }
-    markdown += '\n';
-  }
+  markdown += generateCommitsMarkdown(commits);
 
-  // ============================================
-  // FILES CHANGED
-  // ============================================
-  if (files.length > 0) {
-    markdown += `## Files Changed (${files.length})\n\n`;
-    markdown += `| Status | File | Changes |\n`;
-    markdown += `|--------|------|--------:|\n`;
-    for (const file of files) {
-      const statusIcon =
-        file.status === 'added'
-          ? '🆕 Added'
-          : file.status === 'removed'
-            ? '🗑️ Removed'
-            : file.status === 'modified'
-              ? '✏️ Modified'
-              : file.status === 'renamed'
-                ? '📝 Renamed'
-                : `📄 ${file.status}`;
-      const changes = `+${file.additions} -${file.deletions}`;
-      let filename = file.filename;
-      if (file.status === 'renamed' && file.previous_filename) {
-        filename = `${file.previous_filename} → ${file.filename}`;
-      }
-      markdown += `| ${statusIcon} | \`${filename}\` | ${changes} |\n`;
-    }
-    markdown += '\n';
-  }
+  markdown += generateFilesMarkdown(files);
 
   return { markdown, downloadedImages: allDownloadedImages };
 }
@@ -876,105 +743,7 @@ export async function convertToMarkdown(data, options = {}) {
  * @returns {string} JSON string
  */
 export function convertToJson(data, downloadedImages = []) {
-  const { pr, files, comments, reviewComments, reviews, commits } = data;
-
-  return JSON.stringify(
-    {
-      pullRequest: {
-        number: pr.number,
-        title: pr.title,
-        state: pr.state,
-        draft: pr.draft,
-        merged: pr.merged,
-        url: pr.html_url,
-        author: {
-          login: pr.user.login,
-          url: `https://github.com/${pr.user.login}`,
-        },
-        createdAt: pr.created_at,
-        updatedAt: pr.updated_at,
-        mergedAt: pr.merged_at,
-        closedAt: pr.closed_at,
-        mergedBy: pr.merged_by
-          ? {
-              login: pr.merged_by.login,
-              url: `https://github.com/${pr.merged_by.login}`,
-            }
-          : null,
-        base: {
-          ref: pr.base.ref,
-          sha: pr.base.sha,
-        },
-        head: {
-          ref: pr.head.ref,
-          sha: pr.head.sha,
-        },
-        additions: pr.additions,
-        deletions: pr.deletions,
-        changedFiles: pr.changed_files,
-        labels: pr.labels?.map((l) => ({ name: l.name, color: l.color })) || [],
-        assignees:
-          pr.assignees?.map((a) => ({
-            login: a.login,
-            url: `https://github.com/${a.login}`,
-          })) || [],
-        requestedReviewers:
-          pr.requested_reviewers?.map((r) => ({
-            login: r.login,
-            url: `https://github.com/${r.login}`,
-          })) || [],
-        milestone: pr.milestone
-          ? { title: pr.milestone.title, number: pr.milestone.number }
-          : null,
-        body: pr.body,
-      },
-      commits: commits.map((c) => ({
-        sha: c.sha,
-        message: c.commit.message,
-        author: c.author?.login || c.commit.author?.name || 'unknown',
-        url: c.html_url,
-        date: c.commit.author?.date,
-      })),
-      files: files.map((f) => ({
-        filename: f.filename,
-        status: f.status,
-        additions: f.additions,
-        deletions: f.deletions,
-        previousFilename: f.previous_filename,
-        patch: f.patch,
-      })),
-      reviews: reviews.map((r) => ({
-        id: r.id,
-        author: r.user.login,
-        state: r.state,
-        body: r.body,
-        submittedAt: r.submitted_at,
-      })),
-      reviewComments: reviewComments.map((c) => ({
-        id: c.id,
-        author: c.user.login,
-        body: c.body,
-        path: c.path,
-        line: c.line,
-        createdAt: c.created_at,
-        diffHunk: c.diff_hunk,
-        reviewId: c.pull_request_review_id,
-      })),
-      comments: comments.map((c) => ({
-        id: c.id,
-        author: c.user.login,
-        body: c.body,
-        createdAt: c.created_at,
-      })),
-      downloadedImages: downloadedImages.map((img) => ({
-        originalUrl: img.originalUrl,
-        localPath: img.relativePath,
-        format: img.format,
-      })),
-    },
-    null,
-    2
-  );
+  return formattersConvertToJson(data, downloadedImages);
 }
 
 /**
@@ -1041,9 +810,7 @@ export async function savePullRequest(data, options = {}) {
   };
 }
 
-// ============================================
 // CLI IMPLEMENTATION
-// ============================================
 
 // Only run CLI when executed directly, not when imported as a module
 // Check if this module is the main entry point by comparing paths
