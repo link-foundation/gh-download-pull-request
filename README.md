@@ -36,11 +36,7 @@ gh-load-pull-request owner/private-repo#456
 Install globally for system-wide access:
 
 ```bash
-# Using bun
 bun install -g gh-load-pull-request
-
-# Using npm
-npm install -g gh-load-pull-request
 
 # After installation, use anywhere:
 gh-load-pull-request --help
@@ -51,11 +47,7 @@ gh-load-pull-request --help
 Remove the global installation:
 
 ```bash
-# Using bun
 bun uninstall -g gh-load-pull-request
-
-# Using npm
-npm uninstall -g gh-load-pull-request
 ```
 
 ### Local Installation
@@ -66,7 +58,7 @@ git clone https://github.com/link-foundation/gh-load-pull-request.git
 cd gh-load-pull-request
 
 # Install dependencies
-npm install
+bun install
 
 # Make the script executable
 chmod +x gh-load-pull-request.mjs
@@ -174,7 +166,7 @@ gh-load-pull-request owner/repo#123 | claude-analyze
 
 ## Requirements
 
-- [Bun](https://bun.sh/) (>=1.2.0) or [Node.js](https://nodejs.org/) (>=22.17.0) runtime
+- [Bun](https://bun.sh/) (>=1.2.0) runtime
 - For private repositories (optional):
   - [GitHub CLI](https://cli.github.com/) (recommended) OR
   - GitHub personal access token (via `--token` or `GITHUB_TOKEN` env var)
@@ -191,11 +183,7 @@ gh-load-pull-request owner/repo#123 | claude-analyze
 
 ```bash
 # Run all tests
-npm test
-
-# Or run test files directly
-node tests/all.test.mjs
-node tests/cli.test.mjs
+bun test
 ```
 
 ## Development
@@ -206,7 +194,7 @@ git clone https://github.com/link-foundation/gh-load-pull-request.git
 cd gh-load-pull-request
 
 # Install dependencies
-npm install
+bun install
 
 # Make executable
 chmod +x gh-load-pull-request.mjs
@@ -215,10 +203,10 @@ chmod +x gh-load-pull-request.mjs
 ./gh-load-pull-request.mjs owner/repo#123
 
 # Run tests
-npm test
+bun test
 
 # Run linting
-npm run lint
+bun run lint
 
 # Bump version
 ./version.mjs patch  # or minor, major
