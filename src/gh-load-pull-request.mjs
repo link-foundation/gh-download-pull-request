@@ -20,7 +20,7 @@ import { hideBin } from 'yargs/helpers';
 let version = '0.1.0'; // Fallback version
 
 try {
-  const packagePath = path.join(__dirname, 'package.json');
+  const packagePath = path.join(__dirname, '..', 'package.json');
   // Use node:fs for Deno compatibility (fs-extra has issues with Deno)
   const { readFileSync, existsSync } = await import('node:fs');
   if (existsSync(packagePath)) {
@@ -44,17 +44,32 @@ const colors = {
   reset: '\x1b[0m',
 };
 
-// Verbose logging flag (set by CLI option)
+// Logging configuration
 let verboseMode = false;
+let silentMode = false;
 
-const log = (color, message) =>
-  console.error(`${colors[color]}${message}${colors.reset}`);
+const log = (color, message) => {
+  if (!silentMode) {
+    console.error(`${colors[color]}${message}${colors.reset}`);
+  }
+};
 
 const verboseLog = (color, message) => {
-  if (verboseMode) {
+  if (verboseMode && !silentMode) {
     log(color, message);
   }
 };
+
+/**
+ * Set logging mode for library usage
+ * @param {Object} options - Logging options
+ * @param {boolean} options.verbose - Enable verbose logging
+ * @param {boolean} options.silent - Disable all logging
+ */
+export function setLoggingMode(options = {}) {
+  verboseMode = options.verbose || false;
+  silentMode = options.silent || false;
+}
 
 // Helper function to check if gh CLI is installed
 async function isGhInstalled() {
@@ -67,8 +82,11 @@ async function isGhInstalled() {
   }
 }
 
-// Helper function to get GitHub token from gh CLI if available
-async function getGhToken() {
+/**
+ * Get GitHub token from gh CLI if available
+ * @returns {Promise<string|null>} GitHub token or null
+ */
+export async function getGhToken() {
   try {
     if (!(await isGhInstalled())) {
       return null;
@@ -85,8 +103,12 @@ async function getGhToken() {
   }
 }
 
-// Parse PR URL to extract owner, repo, and PR number
-function parsePrUrl(url) {
+/**
+ * Parse PR URL to extract owner, repo, and PR number
+ * @param {string} url - PR URL or shorthand (owner/repo#123, owner/repo/123, or full URL)
+ * @returns {{owner: string, repo: string, prNumber: number}|null} Parsed PR info or null
+ */
+export function parsePrUrl(url) {
   // Support multiple formats:
   // https://github.com/owner/repo/pull/123
   // owner/repo#123
@@ -136,8 +158,13 @@ const imageMagicBytes = {
   svg: [0x3c, 0x3f, 0x78, 0x6d, 0x6c], // <?xml for SVG (though SVG can also start with <svg)
 };
 
-// Validate image by checking magic bytes
-function validateImageBuffer(buffer, url) {
+/**
+ * Validate image by checking magic bytes
+ * @param {Buffer} buffer - Image buffer to validate
+ * @param {string} url - Original URL (for logging)
+ * @returns {{valid: boolean, format?: string, reason?: string}} Validation result
+ */
+export function validateImageBuffer(buffer, url) {
   if (!buffer || buffer.length < 4) {
     return { valid: false, reason: 'Buffer too small' };
   }
@@ -185,8 +212,13 @@ function validateImageBuffer(buffer, url) {
   return { valid: true, format: 'unknown' };
 }
 
-// Get file extension from format or URL
-function getExtensionFromFormat(format, url) {
+/**
+ * Get file extension from format or URL
+ * @param {string} format - Image format detected
+ * @param {string} url - Original URL
+ * @returns {string} File extension with leading dot
+ */
+export function getExtensionFromFormat(format, url) {
   const formatExtensions = {
     png: '.png',
     jpg: '.jpg',
@@ -227,8 +259,14 @@ function getExtensionFromFormat(format, url) {
   return '.png'; // Default fallback
 }
 
-// Download a file with redirect support
-function downloadFile(url, token, maxRedirects = 5) {
+/**
+ * Download a file with redirect support
+ * @param {string} url - URL to download
+ * @param {string} token - GitHub token for authenticated requests
+ * @param {number} maxRedirects - Maximum number of redirects to follow
+ * @returns {Promise<Buffer>} Downloaded file content
+ */
+export function downloadFile(url, token, maxRedirects = 5) {
   return new Promise((resolve, reject) => {
     if (maxRedirects <= 0) {
       reject(new Error('Too many redirects'));
@@ -281,8 +319,12 @@ function downloadFile(url, token, maxRedirects = 5) {
   });
 }
 
-// Extract image URLs from markdown content
-function extractMarkdownImageUrls(content) {
+/**
+ * Extract image URLs from markdown content
+ * @param {string} content - Markdown content to search
+ * @returns {Array<{url: string, alt: string}>} Array of image URLs with alt text
+ */
+export function extractMarkdownImageUrls(content) {
   if (!content) {
     return [];
   }
@@ -305,8 +347,15 @@ function extractMarkdownImageUrls(content) {
   return urls;
 }
 
-// Download all images from content and update the markdown
-async function downloadImages(content, imagesDir, token, _prNumber) {
+/**
+ * Download all images from content and update the markdown
+ * @param {string} content - Markdown content with image URLs
+ * @param {string} imagesDir - Directory to save images
+ * @param {string} token - GitHub token for authenticated requests
+ * @param {number} _prNumber - PR number (unused, kept for compatibility)
+ * @returns {Promise<{content: string, downloadedImages: Array}>} Updated content and downloaded images info
+ */
+export async function downloadImages(content, imagesDir, token, _prNumber) {
   if (!content) {
     return { content, downloadedImages: [] };
   }
@@ -338,7 +387,7 @@ async function downloadImages(content, imagesDir, token, _prNumber) {
       const ext = getExtensionFromFormat(validation.format, url);
       const filename = `image-${imageCounter}${ext}`;
       const localPath = path.join(imagesDir, filename);
-      const relativePath = `./${path.basename(imagesDir)}/${filename}`;
+      const relativePath = `./images/${filename}`;
 
       await fs.writeFile(localPath, buffer);
       downloadedImages.push({
@@ -362,8 +411,19 @@ async function downloadImages(content, imagesDir, token, _prNumber) {
   return { content: updatedContent, downloadedImages };
 }
 
-// Fetch pull request data from GitHub API
-async function fetchPullRequest(owner, repo, prNumber, token, options = {}) {
+/**
+ * Fetch pull request data from GitHub API
+ * @param {Object} options - Options for fetching PR
+ * @param {string} options.owner - Repository owner
+ * @param {string} options.repo - Repository name
+ * @param {number} options.prNumber - Pull request number
+ * @param {string} options.token - GitHub token (optional for public repos)
+ * @param {boolean} options.includeReviews - Include PR reviews (default: true)
+ * @returns {Promise<Object>} PR data object with pr, files, comments, reviewComments, reviews, commits
+ */
+export async function loadPullRequest(options) {
+  const { owner, repo, prNumber, token, includeReviews = true } = options;
+
   try {
     log('blue', `🔍 Fetching pull request ${owner}/${repo}#${prNumber}...`);
 
@@ -386,14 +446,14 @@ async function fetchPullRequest(owner, repo, prNumber, token, options = {}) {
       pull_number: prNumber,
     });
 
-    // Fetch PR comments
+    // Fetch PR comments (issue comments)
     const { data: comments } = await octokit.rest.issues.listComments({
       owner,
       repo,
       issue_number: prNumber,
     });
 
-    // Fetch PR review comments
+    // Fetch PR review comments (inline code comments)
     const { data: reviewComments } =
       await octokit.rest.pulls.listReviewComments({
         owner,
@@ -401,9 +461,9 @@ async function fetchPullRequest(owner, repo, prNumber, token, options = {}) {
         pull_number: prNumber,
       });
 
-    // Fetch PR reviews (only if includeReviews is true)
+    // Fetch PR reviews
     let reviews = [];
-    if (options.includeReviews !== false) {
+    if (includeReviews) {
       const { data: reviewsData } = await octokit.rest.pulls.listReviews({
         owner,
         repo,
@@ -431,18 +491,20 @@ async function fetchPullRequest(owner, repo, prNumber, token, options = {}) {
     };
   } catch (error) {
     if (error.status === 404) {
-      log('red', `❌ Pull request not found: ${owner}/${repo}#${prNumber}`);
+      throw new Error(`Pull request not found: ${owner}/${repo}#${prNumber}`);
     } else if (error.status === 401) {
-      log(
-        'red',
-        `❌ Authentication failed. Please provide a valid GitHub token`
+      throw new Error(
+        'Authentication failed. Please provide a valid GitHub token'
       );
     } else {
-      log('red', `❌ Failed to fetch pull request: ${error.message}`);
+      throw new Error(`Failed to fetch pull request: ${error.message}`);
     }
-    process.exit(1);
   }
 }
+
+// Alias for backwards compatibility
+export const fetchPullRequest = (owner, repo, prNumber, token, options = {}) =>
+  loadPullRequest({ owner, repo, prNumber, token, ...options });
 
 // Process content and download images if enabled
 function processContent(
@@ -458,8 +520,33 @@ function processContent(
   return downloadImages(content, imagesDir, token, prNumber);
 }
 
-// Convert PR data to markdown
-async function convertToMarkdown(data, options = {}) {
+/**
+ * Format a date string for display
+ * @param {string} dateStr - ISO date string
+ * @returns {string} Formatted date string
+ */
+function formatDate(dateStr) {
+  if (!dateStr) {
+    return '';
+  }
+  const date = new Date(dateStr);
+  return date
+    .toISOString()
+    .replace('T', ' ')
+    .replace(/\.\d+Z$/, ' UTC');
+}
+
+/**
+ * Convert PR data to markdown format
+ * @param {Object} data - PR data from loadPullRequest
+ * @param {Object} options - Conversion options
+ * @param {boolean} options.downloadImagesFlag - Download embedded images (default: true)
+ * @param {string} options.imagesDir - Directory to save images
+ * @param {string} options.token - GitHub token for downloading images
+ * @param {number} options.prNumber - PR number
+ * @returns {Promise<{markdown: string, downloadedImages: Array}>} Markdown content and downloaded images
+ */
+export async function convertToMarkdown(data, options = {}) {
   const { pr, files, comments, reviewComments, reviews, commits } = data;
   const {
     downloadImagesFlag = true,
@@ -486,125 +573,220 @@ async function convertToMarkdown(data, options = {}) {
     allDownloadedImages = [...allDownloadedImages, ...result.downloadedImages];
   }
 
-  // Header
+  // ============================================
+  // HEADER - Title
+  // ============================================
   markdown += `# ${pr.title}\n\n`;
 
-  // Metadata
-  markdown += `**Author:** @${pr.user.login}\n`;
-  markdown += `**Created:** ${pr.created_at}\n`;
-  markdown += `**State:** ${pr.state}\n`;
-  markdown += `**Branch:** ${pr.head.ref} → ${pr.base.ref}\n`;
+  // ============================================
+  // METADATA BLOCK - Mirrors GitHub PR sidebar
+  // ============================================
+  markdown += `## Metadata\n\n`;
+
+  // Basic info
+  markdown += `| Field | Value |\n`;
+  markdown += `|-------|-------|\n`;
+  markdown += `| **Number** | #${pr.number} |\n`;
+  markdown += `| **URL** | ${pr.html_url} |\n`;
+  markdown += `| **Author** | [@${pr.user.login}](https://github.com/${pr.user.login}) |\n`;
+  markdown += `| **State** | ${pr.state}${pr.merged ? ' (merged)' : pr.draft ? ' (draft)' : ''} |\n`;
+  markdown += `| **Created** | ${formatDate(pr.created_at)} |\n`;
+  markdown += `| **Updated** | ${formatDate(pr.updated_at)} |\n`;
+  if (pr.merged_at) {
+    markdown += `| **Merged** | ${formatDate(pr.merged_at)} |\n`;
+    if (pr.merged_by) {
+      markdown += `| **Merged by** | [@${pr.merged_by.login}](https://github.com/${pr.merged_by.login}) |\n`;
+    }
+  }
+  if (pr.closed_at && !pr.merged_at) {
+    markdown += `| **Closed** | ${formatDate(pr.closed_at)} |\n`;
+  }
+  markdown += `| **Base** | \`${pr.base.ref}\` |\n`;
+  markdown += `| **Head** | \`${pr.head.ref}\` |\n`;
+  markdown += `| **Additions** | +${pr.additions} |\n`;
+  markdown += `| **Deletions** | -${pr.deletions} |\n`;
+  markdown += `| **Changed Files** | ${pr.changed_files} |\n`;
+
+  markdown += '\n';
 
   // Labels
   if (pr.labels && pr.labels.length > 0) {
-    markdown += `**Labels:** ${pr.labels.map((l) => l.name).join(', ')}\n`;
+    markdown += `**Labels:** ${pr.labels.map((l) => `\`${l.name}\``).join(', ')}\n\n`;
   }
 
-  markdown += '\n## Description\n\n';
+  // Assignees
+  if (pr.assignees && pr.assignees.length > 0) {
+    markdown += `**Assignees:** ${pr.assignees.map((a) => `[@${a.login}](https://github.com/${a.login})`).join(', ')}\n\n`;
+  }
+
+  // Reviewers (requested)
+  if (pr.requested_reviewers && pr.requested_reviewers.length > 0) {
+    markdown += `**Requested Reviewers:** ${pr.requested_reviewers.map((r) => `[@${r.login}](https://github.com/${r.login})`).join(', ')}\n\n`;
+  }
+
+  // Milestone
+  if (pr.milestone) {
+    markdown += `**Milestone:** ${pr.milestone.title}\n\n`;
+  }
+
+  markdown += '---\n\n';
+
+  // ============================================
+  // DESCRIPTION
+  // ============================================
+  markdown += '## Description\n\n';
   markdown += prBody ? `${prBody}\n\n` : '_No description provided._\n\n';
 
   markdown += '---\n\n';
 
-  // Comments
-  if (comments.length > 0) {
-    markdown += `## Comments\n\n`;
-    for (const comment of comments) {
-      let commentBody = comment.body || '';
-      if (downloadImagesFlag && commentBody) {
-        verboseLog(
-          'blue',
-          `Processing images in comment by @${comment.user.login}...`
-        );
-        const result = await processContent(
-          commentBody,
-          imagesDir,
-          token,
-          prNumber,
-          downloadImagesFlag
-        );
-        commentBody = result.content;
-        allDownloadedImages = [
-          ...allDownloadedImages,
-          ...result.downloadedImages,
-        ];
-      }
+  // ============================================
+  // CONVERSATION TIMELINE
+  // Build a chronological timeline of all events
+  // ============================================
+  markdown += '## Conversation\n\n';
 
-      markdown += `### Comment by @${comment.user.login} (${comment.created_at})\n\n`;
-      markdown += `${commentBody}\n\n`;
-      markdown += '---\n\n';
+  // Collect all timeline events with timestamps
+  const timelineEvents = [];
+
+  // Add comments to timeline
+  for (const comment of comments) {
+    timelineEvents.push({
+      type: 'comment',
+      timestamp: new Date(comment.created_at),
+      data: comment,
+    });
+  }
+
+  // Add reviews to timeline
+  for (const review of reviews) {
+    if (review.submitted_at) {
+      timelineEvents.push({
+        type: 'review',
+        timestamp: new Date(review.submitted_at),
+        data: review,
+      });
     }
   }
 
-  // Reviews
-  if (reviews.length > 0) {
-    markdown += `## Reviews\n\n`;
-    for (const review of reviews) {
-      let reviewBody = review.body || '';
-      if (downloadImagesFlag && reviewBody) {
-        verboseLog(
-          'blue',
-          `Processing images in review by @${review.user.login}...`
-        );
-        const result = await processContent(
-          reviewBody,
-          imagesDir,
-          token,
-          prNumber,
-          downloadImagesFlag
-        );
-        reviewBody = result.content;
-        allDownloadedImages = [
-          ...allDownloadedImages,
-          ...result.downloadedImages,
-        ];
-      }
+  // Sort by timestamp
+  timelineEvents.sort((a, b) => a.timestamp - b.timestamp);
 
-      markdown += `### Review by @${review.user.login} (${review.submitted_at})\n`;
-      markdown += `**State:** ${review.state}\n\n`;
-
-      if (reviewBody) {
-        markdown += `${reviewBody}\n\n`;
-      }
-
-      // Add review comments for this review
-      const reviewReviewComments = reviewComments.filter(
-        (rc) => rc.pull_request_review_id === review.id
-      );
-      if (reviewReviewComments.length > 0) {
-        markdown += `#### Review Comments\n\n`;
-        for (const rc of reviewReviewComments) {
-          let rcBody = rc.body || '';
-          if (downloadImagesFlag && rcBody) {
-            const result = await processContent(
-              rcBody,
-              imagesDir,
-              token,
-              prNumber,
-              downloadImagesFlag
-            );
-            rcBody = result.content;
-            allDownloadedImages = [
-              ...allDownloadedImages,
-              ...result.downloadedImages,
-            ];
-          }
-
-          const lineInfo = rc.line ? `:${rc.line}` : '';
-          markdown += `**File:** ${rc.path}${lineInfo}\n`;
-          markdown += `${rcBody}\n\n`;
+  // Render timeline events
+  if (timelineEvents.length === 0) {
+    markdown += '_No comments or reviews._\n\n';
+  } else {
+    for (const event of timelineEvents) {
+      if (event.type === 'comment') {
+        const comment = event.data;
+        let commentBody = comment.body || '';
+        if (downloadImagesFlag && commentBody) {
+          verboseLog(
+            'blue',
+            `Processing images in comment by @${comment.user.login}...`
+          );
+          const result = await processContent(
+            commentBody,
+            imagesDir,
+            token,
+            prNumber,
+            downloadImagesFlag
+          );
+          commentBody = result.content;
+          allDownloadedImages = [
+            ...allDownloadedImages,
+            ...result.downloadedImages,
+          ];
         }
-      }
 
-      markdown += '---\n\n';
+        markdown += `### 💬 Comment by [@${comment.user.login}](https://github.com/${comment.user.login})\n`;
+        markdown += `*${formatDate(comment.created_at)}*\n\n`;
+        markdown += `${commentBody}\n\n`;
+        markdown += '---\n\n';
+      } else if (event.type === 'review') {
+        const review = event.data;
+        let reviewBody = review.body || '';
+        if (downloadImagesFlag && reviewBody) {
+          verboseLog(
+            'blue',
+            `Processing images in review by @${review.user.login}...`
+          );
+          const result = await processContent(
+            reviewBody,
+            imagesDir,
+            token,
+            prNumber,
+            downloadImagesFlag
+          );
+          reviewBody = result.content;
+          allDownloadedImages = [
+            ...allDownloadedImages,
+            ...result.downloadedImages,
+          ];
+        }
+
+        const stateEmoji =
+          review.state === 'APPROVED'
+            ? '✅'
+            : review.state === 'CHANGES_REQUESTED'
+              ? '❌'
+              : review.state === 'COMMENTED'
+                ? '💬'
+                : '📝';
+
+        markdown += `### ${stateEmoji} Review by [@${review.user.login}](https://github.com/${review.user.login})\n`;
+        markdown += `*${formatDate(review.submitted_at)}* — **${review.state}**\n\n`;
+
+        if (reviewBody) {
+          markdown += `${reviewBody}\n\n`;
+        }
+
+        // Add review comments for this review
+        const reviewReviewComments = reviewComments.filter(
+          (rc) => rc.pull_request_review_id === review.id
+        );
+        if (reviewReviewComments.length > 0) {
+          markdown += `#### Inline Comments\n\n`;
+          for (const rc of reviewReviewComments) {
+            let rcBody = rc.body || '';
+            if (downloadImagesFlag && rcBody) {
+              const result = await processContent(
+                rcBody,
+                imagesDir,
+                token,
+                prNumber,
+                downloadImagesFlag
+              );
+              rcBody = result.content;
+              allDownloadedImages = [
+                ...allDownloadedImages,
+                ...result.downloadedImages,
+              ];
+            }
+
+            const lineInfo = rc.line ? `:${rc.line}` : '';
+            markdown += `**\`${rc.path}${lineInfo}\`**\n\n`;
+            markdown += `${rcBody}\n\n`;
+            if (rc.diff_hunk) {
+              markdown += '```diff\n';
+              markdown += `${rc.diff_hunk}\n`;
+              markdown += '```\n\n';
+            }
+          }
+        }
+
+        markdown += '---\n\n';
+      }
     }
   }
 
-  // Standalone review comments (not associated with a review)
+  // ============================================
+  // STANDALONE REVIEW COMMENTS (not part of a review)
+  // ============================================
   const standaloneReviewComments = reviewComments.filter(
     (rc) => !rc.pull_request_review_id
   );
   if (standaloneReviewComments.length > 0) {
-    markdown += `## Review Comments\n\n`;
+    markdown += `## Inline Code Comments\n\n`;
     for (const comment of standaloneReviewComments) {
       let commentBody = comment.body || '';
       if (downloadImagesFlag && commentBody) {
@@ -622,50 +804,64 @@ async function convertToMarkdown(data, options = {}) {
         ];
       }
 
-      markdown += `**@${comment.user.login}** commented on \`${comment.path}\``;
+      markdown += `### [@${comment.user.login}](https://github.com/${comment.user.login}) on \`${comment.path}\``;
       if (comment.line) {
         markdown += ` (line ${comment.line})`;
       }
-      markdown += `:\n`;
-      markdown += `*${comment.created_at}*\n\n`;
+      markdown += `\n`;
+      markdown += `*${formatDate(comment.created_at)}*\n\n`;
       markdown += `${commentBody}\n\n`;
       if (comment.diff_hunk) {
         markdown += '```diff\n';
         markdown += `${comment.diff_hunk}\n`;
         markdown += '```\n\n';
       }
+      markdown += '---\n\n';
     }
   }
 
-  // Commits
+  // ============================================
+  // COMMITS
+  // ============================================
   if (commits.length > 0) {
     markdown += `## Commits (${commits.length})\n\n`;
     for (const commit of commits) {
       const message = commit.commit.message.split('\n')[0]; // First line only
       const sha = commit.sha.substring(0, 7);
-      markdown += `- [\`${sha}\`](${commit.html_url}) ${message} - @${commit.author?.login || 'unknown'}\n`;
+      const author =
+        commit.author?.login || commit.commit.author?.name || 'unknown';
+      const authorLink = commit.author
+        ? `[@${author}](https://github.com/${author})`
+        : author;
+      markdown += `- [\`${sha}\`](${commit.html_url}) ${message} — ${authorLink}\n`;
     }
     markdown += '\n';
   }
 
-  // Files changed
+  // ============================================
+  // FILES CHANGED
+  // ============================================
   if (files.length > 0) {
     markdown += `## Files Changed (${files.length})\n\n`;
+    markdown += `| Status | File | Changes |\n`;
+    markdown += `|--------|------|--------:|\n`;
     for (const file of files) {
       const statusIcon =
         file.status === 'added'
-          ? '🆕'
+          ? '🆕 Added'
           : file.status === 'removed'
-            ? '🗑️'
+            ? '🗑️ Removed'
             : file.status === 'modified'
-              ? '✏️'
+              ? '✏️ Modified'
               : file.status === 'renamed'
-                ? '📝'
-                : '📄';
-      markdown += `${statusIcon} **${file.filename}** (+${file.additions} -${file.deletions})\n`;
-      if (file.status === 'renamed') {
-        markdown += `  - Renamed from: \`${file.previous_filename}\`\n`;
+                ? '📝 Renamed'
+                : `📄 ${file.status}`;
+      const changes = `+${file.additions} -${file.deletions}`;
+      let filename = file.filename;
+      if (file.status === 'renamed' && file.previous_filename) {
+        filename = `${file.previous_filename} → ${file.filename}`;
       }
+      markdown += `| ${statusIcon} | \`${filename}\` | ${changes} |\n`;
     }
     markdown += '\n';
   }
@@ -673,8 +869,13 @@ async function convertToMarkdown(data, options = {}) {
   return { markdown, downloadedImages: allDownloadedImages };
 }
 
-// Convert PR data to JSON format
-function convertToJson(data, downloadedImages = []) {
+/**
+ * Convert PR data to JSON format
+ * @param {Object} data - PR data from loadPullRequest
+ * @param {Array} downloadedImages - Array of downloaded image info
+ * @returns {string} JSON string
+ */
+export function convertToJson(data, downloadedImages = []) {
   const { pr, files, comments, reviewComments, reviews, commits } = data;
 
   return JSON.stringify(
@@ -683,25 +884,56 @@ function convertToJson(data, downloadedImages = []) {
         number: pr.number,
         title: pr.title,
         state: pr.state,
+        draft: pr.draft,
+        merged: pr.merged,
         url: pr.html_url,
-        author: pr.user.login,
+        author: {
+          login: pr.user.login,
+          url: `https://github.com/${pr.user.login}`,
+        },
         createdAt: pr.created_at,
         updatedAt: pr.updated_at,
         mergedAt: pr.merged_at,
         closedAt: pr.closed_at,
-        base: pr.base.ref,
-        head: pr.head.ref,
+        mergedBy: pr.merged_by
+          ? {
+              login: pr.merged_by.login,
+              url: `https://github.com/${pr.merged_by.login}`,
+            }
+          : null,
+        base: {
+          ref: pr.base.ref,
+          sha: pr.base.sha,
+        },
+        head: {
+          ref: pr.head.ref,
+          sha: pr.head.sha,
+        },
         additions: pr.additions,
         deletions: pr.deletions,
         changedFiles: pr.changed_files,
-        labels: pr.labels?.map((l) => l.name) || [],
+        labels: pr.labels?.map((l) => ({ name: l.name, color: l.color })) || [],
+        assignees:
+          pr.assignees?.map((a) => ({
+            login: a.login,
+            url: `https://github.com/${a.login}`,
+          })) || [],
+        requestedReviewers:
+          pr.requested_reviewers?.map((r) => ({
+            login: r.login,
+            url: `https://github.com/${r.login}`,
+          })) || [],
+        milestone: pr.milestone
+          ? { title: pr.milestone.title, number: pr.milestone.number }
+          : null,
         body: pr.body,
       },
       commits: commits.map((c) => ({
         sha: c.sha,
         message: c.commit.message,
-        author: c.author?.login || 'unknown',
+        author: c.author?.login || c.commit.author?.name || 'unknown',
         url: c.html_url,
+        date: c.commit.author?.date,
       })),
       files: files.map((f) => ({
         filename: f.filename,
@@ -709,6 +941,7 @@ function convertToJson(data, downloadedImages = []) {
         additions: f.additions,
         deletions: f.deletions,
         previousFilename: f.previous_filename,
+        patch: f.patch,
       })),
       reviews: reviews.map((r) => ({
         id: r.id,
@@ -744,69 +977,165 @@ function convertToJson(data, downloadedImages = []) {
   );
 }
 
-// Configure CLI arguments
-const scriptName = path.basename(process.argv[1]);
-const argv = yargs(hideBin(process.argv))
-  .scriptName(scriptName)
-  .version(version)
-  .usage('Usage: $0 <pr-url> [options]')
-  .command(
-    '$0 <pr>',
-    'Download a GitHub pull request and convert it to markdown',
-    (yargs) => {
-      yargs.positional('pr', {
-        describe:
-          'Pull request URL or shorthand (e.g., https://github.com/owner/repo/pull/123 or owner/repo#123)',
-        type: 'string',
-      });
-    }
-  )
-  .option('token', {
-    alias: 't',
-    type: 'string',
-    describe: 'GitHub personal access token (optional for public PRs)',
-    default: process.env.GITHUB_TOKEN,
-  })
-  .option('output', {
-    alias: 'o',
-    type: 'string',
-    describe: 'Output directory (default: current directory)',
-  })
-  .option('download-images', {
-    type: 'boolean',
-    describe: 'Download embedded images',
-    default: true,
-  })
-  .option('include-reviews', {
-    type: 'boolean',
-    describe: 'Include PR reviews',
-    default: true,
-  })
-  .option('format', {
-    type: 'string',
-    describe: 'Output format: markdown, json',
-    default: 'markdown',
-    choices: ['markdown', 'json'],
-  })
-  .option('verbose', {
-    alias: 'v',
-    type: 'boolean',
-    describe: 'Enable verbose logging',
-    default: false,
-  })
-  .help('h')
-  .alias('h', 'help')
-  .example('$0 https://github.com/owner/repo/pull/123', 'Download PR #123')
-  .example('$0 owner/repo#123', 'Download PR using shorthand format')
-  .example('$0 owner/repo#123 -o ./output', 'Save to output directory')
-  .example('$0 owner/repo#123 --format json', 'Output as JSON')
-  .example('$0 owner/repo#123 --no-download-images', 'Skip image download')
-  .example(
-    '$0 https://github.com/owner/repo/pull/123 --token ghp_xxx',
-    'Download private PR'
-  ).argv;
+/**
+ * Save PR data to a folder with all assets for offline viewing
+ * @param {Object} data - PR data from loadPullRequest
+ * @param {Object} options - Save options
+ * @param {string} options.outputDir - Output directory
+ * @param {string} options.format - Output format ('markdown' or 'json')
+ * @param {boolean} options.downloadImages - Download images (default: true)
+ * @param {string} options.token - GitHub token for downloading images
+ * @returns {Promise<{mdPath: string, jsonPath: string, imagesDir: string, downloadedImages: Array}>}
+ */
+export async function savePullRequest(data, options = {}) {
+  const {
+    outputDir,
+    format = 'markdown',
+    downloadImages: downloadImagesFlag = true,
+    token = '',
+  } = options;
+
+  const prNumber = data.pr.number;
+  const prDir = path.join(outputDir, `pr-${prNumber}`);
+  const imagesDir = path.join(prDir, 'images');
+  const mdPath = path.join(prDir, `pr-${prNumber}.md`);
+  const jsonPath = path.join(prDir, `pr-${prNumber}.json`);
+
+  // Ensure directories exist
+  await fs.ensureDir(prDir);
+
+  let downloadedImages = [];
+
+  // Generate markdown
+  log('blue', `📝 Converting to ${format}...`);
+
+  const mdResult = await convertToMarkdown(data, {
+    downloadImagesFlag,
+    imagesDir,
+    token,
+    prNumber,
+  });
+  downloadedImages = mdResult.downloadedImages;
+
+  // Save markdown
+  await fs.writeFile(mdPath, mdResult.markdown, 'utf8');
+  log('green', `✅ Saved markdown to ${mdPath}`);
+
+  // Always save JSON as well for metadata
+  const jsonContent = convertToJson(data, downloadedImages);
+  await fs.writeFile(jsonPath, jsonContent, 'utf8');
+  log('green', `✅ Saved JSON metadata to ${jsonPath}`);
+
+  if (downloadedImages.length > 0) {
+    log(
+      'green',
+      `📁 Downloaded ${downloadedImages.length} image(s) to ${imagesDir}`
+    );
+  }
+
+  return {
+    mdPath,
+    jsonPath,
+    imagesDir,
+    downloadedImages,
+  };
+}
+
+// ============================================
+// CLI IMPLEMENTATION
+// ============================================
+
+// Only run CLI when executed directly, not when imported as a module
+// Check if this module is the main entry point by comparing paths
+function isRunningAsCli() {
+  // Get the actual script being run
+  const scriptArg = process.argv[1];
+  if (!scriptArg) {
+    return false;
+  }
+
+  // Normalize paths for comparison
+  const scriptPath = path.resolve(scriptArg);
+  const thisModulePath = path.resolve(__filename);
+
+  // Check if the script being run is this module
+  // This handles both direct execution and bun run
+  return (
+    scriptPath === thisModulePath ||
+    scriptPath.endsWith('gh-load-pull-request.mjs') ||
+    scriptPath.endsWith('gh-load-pull-request')
+  );
+}
+
+/**
+ * Parse CLI arguments
+ * @returns {Object} Parsed CLI arguments
+ */
+function parseCliArgs() {
+  const scriptName = path.basename(process.argv[1] || 'gh-load-pull-request');
+  return yargs(hideBin(process.argv))
+    .scriptName(scriptName)
+    .version(version)
+    .usage('Usage: $0 <pr-url> [options]')
+    .command(
+      '$0 <pr>',
+      'Download a GitHub pull request and convert it to markdown',
+      (yargs) => {
+        yargs.positional('pr', {
+          describe:
+            'Pull request URL or shorthand (e.g., https://github.com/owner/repo/pull/123 or owner/repo#123)',
+          type: 'string',
+        });
+      }
+    )
+    .option('token', {
+      alias: 't',
+      type: 'string',
+      describe: 'GitHub personal access token (optional for public PRs)',
+      default: process.env.GITHUB_TOKEN,
+    })
+    .option('output', {
+      alias: 'o',
+      type: 'string',
+      describe: 'Output directory (creates pr-<number>/ subfolder)',
+    })
+    .option('download-images', {
+      type: 'boolean',
+      describe: 'Download embedded images',
+      default: true,
+    })
+    .option('include-reviews', {
+      type: 'boolean',
+      describe: 'Include PR reviews',
+      default: true,
+    })
+    .option('format', {
+      type: 'string',
+      describe: 'Output format: markdown, json',
+      default: 'markdown',
+      choices: ['markdown', 'json'],
+    })
+    .option('verbose', {
+      alias: 'v',
+      type: 'boolean',
+      describe: 'Enable verbose logging',
+      default: false,
+    })
+    .help('h')
+    .alias('h', 'help')
+    .example('$0 https://github.com/owner/repo/pull/123', 'Download PR #123')
+    .example('$0 owner/repo#123', 'Download PR using shorthand format')
+    .example('$0 owner/repo#123 -o ./output', 'Save to output directory')
+    .example('$0 owner/repo#123 --format json', 'Output as JSON')
+    .example('$0 owner/repo#123 --no-download-images', 'Skip image download')
+    .example(
+      '$0 https://github.com/owner/repo/pull/123 --token ghp_xxx',
+      'Download private PR'
+    ).argv;
+}
 
 async function main() {
+  const argv = parseCliArgs();
   const {
     pr: prInput,
     token: tokenArg,
@@ -844,80 +1173,58 @@ async function main() {
 
   const { owner, repo, prNumber } = prInfo;
 
-  // Fetch PR data
-  const data = await fetchPullRequest(owner, repo, prNumber, token, {
-    includeReviews,
-  });
-
-  // Determine output paths
-  const outputDir = output || process.cwd();
-  const imagesDir = path.join(outputDir, `pr-${prNumber}-images`);
-  const mdOutputPath = path.join(outputDir, `pr-${prNumber}.md`);
-  const jsonOutputPath = path.join(outputDir, `pr-${prNumber}.json`);
-
-  // Convert to appropriate format
-  log('blue', `📝 Converting to ${format}...`);
-
-  let outputContent;
-  let downloadedImages = [];
-
-  if (format === 'json') {
-    // For JSON, we might still want to download images
-    if (downloadImagesFlag) {
-      log('blue', '🖼️ Processing images...');
-      // Process all content for images
-      const allContent = [
-        data.pr.body || '',
-        ...data.comments.map((c) => c.body || ''),
-        ...data.reviews.map((r) => r.body || ''),
-        ...data.reviewComments.map((rc) => rc.body || ''),
-      ].join('\n\n');
-
-      const result = await downloadImages(
-        allContent,
-        imagesDir,
-        token,
-        prNumber
-      );
-      downloadedImages = result.downloadedImages;
-    }
-    outputContent = convertToJson(data, downloadedImages);
-  } else {
-    // Markdown format with image processing
-    const result = await convertToMarkdown(data, {
-      downloadImagesFlag,
-      imagesDir,
-      token,
+  try {
+    // Fetch PR data
+    const data = await loadPullRequest({
+      owner,
+      repo,
       prNumber,
+      token,
+      includeReviews,
     });
-    outputContent = result.markdown;
-    downloadedImages = result.downloadedImages;
-  }
 
-  // Output
-  if (output) {
-    await fs.ensureDir(outputDir);
-    const outputPath = format === 'json' ? jsonOutputPath : mdOutputPath;
-    await fs.writeFile(outputPath, outputContent, 'utf8');
-    log('green', `✅ Saved to ${outputPath}`);
-
-    if (downloadedImages.length > 0) {
-      log(
-        'green',
-        `📁 Downloaded ${downloadedImages.length} image(s) to ${imagesDir}`
-      );
+    // Determine output paths
+    if (output) {
+      // Save to directory
+      await savePullRequest(data, {
+        outputDir: output,
+        format,
+        downloadImages: downloadImagesFlag,
+        token,
+      });
+    } else {
+      // Output to stdout
+      if (format === 'json') {
+        const jsonContent = convertToJson(data, []);
+        console.log(jsonContent);
+      } else {
+        const { markdown } = await convertToMarkdown(data, {
+          downloadImagesFlag: false, // Don't download images when outputting to stdout
+          imagesDir: '',
+          token: '',
+          prNumber,
+        });
+        console.log(markdown);
+      }
     }
-  } else {
-    console.log(outputContent);
-  }
 
-  log('blue', '🎉 Done!');
+    log('blue', '🎉 Done!');
+  } catch (error) {
+    log('red', `❌ ${error.message}`);
+    if (verboseMode) {
+      console.error(error.stack);
+    }
+    process.exit(1);
+  }
 }
 
-main().catch((error) => {
-  log('red', `💥 Script failed: ${error.message}`);
-  if (verboseMode) {
-    console.error(error.stack);
-  }
-  process.exit(1);
-});
+// Run CLI if this is the main module
+if (isRunningAsCli()) {
+  main().catch((error) => {
+    log('red', `💥 Script failed: ${error.message}`);
+    if (verboseMode) {
+      console.error(error.stack);
+    }
+    process.exit(1);
+  });
+}
