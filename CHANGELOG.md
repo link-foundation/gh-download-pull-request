@@ -1,5 +1,11 @@
 # gh-load-pull-request
 
+## 0.5.0
+
+### Minor Changes
+
+- 1652ddc: Make tool exclusively use Bun runtime, dropping Node.js and Deno support
+
 ## 0.4.2
 
 ### Patch Changes
