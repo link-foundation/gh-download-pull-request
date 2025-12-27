@@ -1,5 +1,4 @@
-#!/usr/bin/env sh
-':'; // # ; exec "$(command -v bun || command -v node)" "$0" "$@"
+#!/usr/bin/env bun
 
 import fs from 'node:fs';
 import path from 'node:path';

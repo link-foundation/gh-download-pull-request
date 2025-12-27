@@ -44,7 +44,7 @@
   },
   "homepage": "https://github.com/link-foundation/gh-load-pull-request#readme",
   "engines": {
-    "node": ">=20.0.0"
+    "bun": ">=1.2.0"
   },
   "files": [
     "src/",
