@@ -1,6 +1,6 @@
 {
   "name": "gh-load-pull-request",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Download GitHub pull request and convert it to markdown",
   "type": "module",
   "main": "src/gh-load-pull-request.mjs",
